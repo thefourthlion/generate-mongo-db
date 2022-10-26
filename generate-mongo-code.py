@@ -18,10 +18,20 @@ def create_config_files():
         return print("Something Went Wrong When Creating Config Files...")
 
 def create_controller_files(name, *args):
-    controller_file = 'const ' + name + ' = require("../models/' + name + '"); exports.create' + name + ' = async (req, res) => { try { let new' + name + ' = new ' + name + '({ data1: req.body.data1, data2: req.body.data2, data3: req.body.data3, data4: req.body.data4, data6: req.body.data6, }); await new' + name + '.save(); res.send(new' + name + '); } catch (err) { console.log(err); } }; exports.read' + name + ' = async (req, res) => { try { ' + name + '.find({}, (err, result) => { if (err) { res.json({ app: err }); } res.send(result); }); } catch (err) { console.log(err); } }; exports.read' + name + 'FromID = async (req, res) => { try { await ' + name + '.findById({ _id: req.params.id }, {}, (err, result) => { if (err) { res.json({ app: err }); } res.send(result); }); } catch (err) { console.log(err); } }; exports.update' + name + ' = async (req, res) => { try { await ' + name + '.findByIdAndUpdate( req.params.id, { data1: req.body.data1, data2: req.body.data2, data3: req.body.data3, data4: req.body.data4, data6: req.body.data6, }, (err, result) => { if (err) { res.json({ app: err }); } res.send(result); } ); } catch (err) { console.log(err); } }; exports.delete' + name + ' = async (req, res) => { try { if ((await ' + name + '.findById(req.params.id)) === null) { res.json({ app: "' + name + ' not found" }); } else { await ' + name + '.findByIdAndRemove(req.params.id).exec(); res.json({ app: "' + name + ' deleted" }); } } catch (err) { console.log(err); res.send(err); } }; '
+    controller_first = 'const '+name+' = require("../models/'+name+'"); exports.create'+name+' = async (req, res) => { try { let new'+name+' = new '+name+'({'
+    controller_second = []
+    controller_third = ' }); await new'+name+'.save(); res.send(new'+name+'); } catch (err) { console.log(err); } }; exports.read'+name+' = async (req, res) => { try { '+name+'.find({}, (err, result) => { if (err) { res.json({ app: err }); } res.send(result); }); } catch (err) { console.log(err); } }; exports.read'+name+'FromID = async (req, res) => { try { await '+name+'.findById({ _id: req.params.id }, {}, (err, result) => { if (err) { res.json({ app: err }); } res.send(result); }); } catch (err) { console.log(err); } }; exports.update'+name+' = async (req, res) => { try { await '+name+'.findByIdAndUpdate( req.params.id, {'
+    controller_fourth = []
+    controller_fifth = ' }, (err, result) => { if (err) { res.json({ app: err }); } res.send(result); } ); } catch (err) { console.log(err); } }; exports.delete'+name+' = async (req, res) => { try { if ((await '+name+'.findById(req.params.id)) === null) { res.json({ app: "post not found" }); } else { await '+name+'.findByIdAndRemove(req.params.id).exec(); res.json({ app: "post deleted" }); } } catch (err) { console.log(err); res.send(err); } };'
     controller_file_path = controller_directory + f'/{name}.js'
+    for arg in args:
+        for a in arg:
+            file = ''+ a +': req.body.'+ a +','
+            controller_second.append(file)
+            controller_fourth.append(file)   
     try:
-        write_to_file(controller_file_path, controller_file)
+        entire_file = controller_first + ''.join(controller_second) + controller_third + ''.join(controller_fourth) + controller_fifth
+        write_to_file(controller_file_path, entire_file)
         return print("Controller Files Successfully Created...")
     except:
         return print("Something Went Wrong When Creating Controller Files...")
@@ -31,18 +41,18 @@ def create_models_files(name, *args):
     models_file_middle = []
     models_file_last = ' }, { timestamps: true } ); const '+name+' = mongoose.model("'+name+'", '+name+'Schema); module.exports = '+name+';'
     models_file_path = model_directory + f'/{name}.js'
+    for arg in args:
+        for a in arg:
+            middle = ''+ a + ': { type: String, require: [true, "Please provide '+ a + '"], default: "", },'
+            models_file_middle.append(middle)
     try:
-        for arg in args:
-          middle = ''+ arg + ': { type: String, require: [true, "Please provide '+ arg + '"], default: "", },'
-          models_file_middle.append(middle)
         middle_file = ''.join(models_file_middle)
         entire_file = models_file_first + middle_file + models_file_last
         write_to_file(models_file_path, entire_file)
-        return print(args)
         return print("models Files Successfully Created...")
     except:
-        return print(args)
-        return print("Something Went Wrong When Creating models Files...")
+        return print("Something Went Wrong When Creating Model Files...")
+
 
 def create_routes_files(name):
     routes_file = 'const express = require("express"); const router = express.Router(); const { create'+name+', read'+name+', read'+name+'FromID, update'+name+', delete'+name+', } = require("../controllers/'+name+'"); router.route("/create").'+name+'(create'+name+'); router.route("/read").get(read'+name+'); router.route("/read/:id").get(read'+name+'FromID); router.route("/update/:id").get(update'+name+'); router.route("/delete/:id").delete(delete'+name+'); module.exports = router; '
@@ -100,20 +110,20 @@ route_directory = os.path.join(current_path, "routes")
 
 print("Creating needed folders...")
 
-if os.path.exists(config_directory):
-  print("Config path already exists.")
-else:
-  os.mkdir(config_directory)
+# if os.path.exists(config_directory):
+#   print("Config path already exists.")
+# else:
+#   os.mkdir(config_directory)
 
 if os.path.exists(controller_directory):
   print("Controller path already exists.")
 else:
   os.mkdir(controller_directory)
 
-if os.path.exists(middleware_directory):
-  print("Middleware path already exists.")
-else:
-  os.mkdir(middleware_directory)
+# if os.path.exists(middleware_directory):
+#   print("Middleware path already exists.")
+# else:
+#   os.mkdir(middleware_directory)
 
 if os.path.exists(model_directory):
   print("Model path already exists.")
@@ -133,16 +143,14 @@ for item in db_item_amount_list:
   db_item_name = input("Name of the item you want in the document?")
   db_items.append(db_item_name)
 
-print(f'The items are {db_items}')
-
 print("Adding config files...")
 create_config_files()
 print("Adding controller files...")
-create_controller_files(type_of_db)
+create_controller_files(type_of_db, db_items)
 print("Adding route files...")
 create_routes_files(type_of_db)
 print("Adding model files...")
-create_models_files(type_of_db)
+create_models_files(type_of_db, db_items)
 print("Adding auth files...")
 create_auth_files()
 print("Adding index file...")
