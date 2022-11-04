@@ -1,4 +1,7 @@
-import os
+#!/usr/bin/env python3
+
+import os.path
+from os import path
 
 # ----------------------------------------- Set according to directory - var ----------------------------
 current_path = (r"Z:\programming\generate-mongo-db")
@@ -7,11 +10,13 @@ current_path = (r"Z:\programming\generate-mongo-db")
 users_choice = "yes"
 db_items = []
 
+
 # ------------------------------------------------------ functions -----------------------------------------------
 def create_config_files():
     config_file = 'const mongoose = require("mongoose");const connectDB = async () => {  await mongoose.connect(process.env.MONGO_URI, {    useNewUrlParser: true,    useUnifiedTopology: true, }); console.log("✅ Database connected");};module.exports = connectDB;'
     config_file_path = config_directory + "/mongoose.js"
     try:
+        print("i 🛑 tried")
         write_to_file(config_file_path, config_file)
         return print("Config Files Successfully Created...")
     except:
@@ -55,7 +60,7 @@ def create_models_files(name, *args):
 
 
 def create_routes_files(name):
-    routes_file = 'const express = require("express"); const router = express.Router(); const { create'+name+', read'+name+', read'+name+'FromID, update'+name+', delete'+name+', } = require("../controllers/'+name+'"); router.route("/create").'+name+'(create'+name+'); router.route("/read").get(read'+name+'); router.route("/read/:id").get(read'+name+'FromID); router.route("/update/:id").get(update'+name+'); router.route("/delete/:id").delete(delete'+name+'); module.exports = router; '
+    routes_file = 'const express = require("express"); const router = express.Router(); const { create'+name+', read'+name+', read'+name+'FromID, update'+name+', delete'+name+', } = require("../controllers/'+name+'"); router.route("/create").post(create'+name+'); router.route("/read").get(read'+name+'); router.route("/read/:id").get(read'+name+'FromID); router.route("/update/:id").post(update'+name+'); router.route("/delete/:id").delete(delete'+name+'); module.exports = router; '
     routes_file_path = route_directory + f'/{name}.js'
     try:
         write_to_file(routes_file_path, routes_file)
@@ -64,13 +69,19 @@ def create_routes_files(name):
         return print("Something Went Wrong When Creating routes Files...")
         
 def create_index_file(name):
-    index_file = 'const express = require("express"); const session = require("express-session"); const passport = require("passport"); const app = express(); const cors = require("cors"); const PORT = process.env.PORT || 3002; const User = require("./models/auth"); const connectDB = require("./configs/mongoose"); require("dotenv").config({ path: "./.env" }); app.use(express.json()); app.use(express.urlencoded({ extended: false })); app.use(cors()); connectDB(); const LocalStrategy = require("passport-local").Strategy; passport.use(new LocalStrategy(User.authenticate())); app.use( session({ secret: process.env.ENCRYPT_KEY, resave: false, saveUninitialized: false, }) ); app.use(passport.initialize()); app.use(passport.session()); passport.use(User.createStrategy()); passport.serializeUser(function (user, done) { done(null, user.id); }); passport.deserializeUser(function (id, done) { User.findById(id, function (err, user) { done(err, user); }); }); app.get("/", (req, res) => { res.json({ app: "running" }); }); app.use("/api/' + name + '", require("./routes/' + name + '")); app.listen(PORT, () => { console.log("✅ Listening on port " + PORT); }); '
+    index_file = 'const express = require("express"); const session = require("express-session"); const passport = require("passport"); const app = express(); const cors = require("cors"); const PORT = process.env.PORT || 3002; const User = require("./models/auth"); const connectDB = require("./config/mongoose"); require("dotenv").config({ path: "./.env" }); app.use(express.json()); app.use(express.urlencoded({ extended: false })); app.use(cors()); connectDB(); const LocalStrategy = require("passport-local").Strategy; passport.use(new LocalStrategy(User.authenticate())); app.use( session({ secret: process.env.ENCRYPT_KEY, resave: false, saveUninitialized: false, }) ); app.use(passport.initialize()); app.use(passport.session()); passport.use(User.createStrategy()); passport.serializeUser(function (user, done) { done(null, user.id); }); passport.deserializeUser(function (id, done) { User.findById(id, function (err, user) { done(err, user); }); }); app.get("/", (req, res) => { res.json({ app: "running" }); }); app.listen(PORT, () => { console.log("✅ Listening on port " + PORT); }); app.use("/api/' + name + '", require("./routes/' + name + '"));'
     index_file_path = f'{current_path}/index.js'
-    try:
-        write_to_file(index_file_path, index_file)
-        return print("index Files Successfully Created...")
-    except:
-        return print("Something Went Wrong When Creating index Files...")
+    # try:
+    if path.exists("./index.js"):
+      print("index.js file already exists...Appending route...")
+      index_file = open("./index.js", "a")
+      index_file.write(f"app.use('/api/{name}', require('./routes/{name}'));")
+      index_file.close()
+    else:
+      write_to_file(index_file_path, index_file)
+      return print("index.js Files Successfully Created...")
+    # except:
+        # return print("Something Went Wrong When Creating index.js Files...")
 
 def create_auth_files():
     auth_controller_file = 'const User = require("../models/auth"); const jwt = require("jsonwebtoken"); const passport = require("passport"); exports.registerUser = async (req, res, next) => { try { const user = new User({ username: req.body.username, email: req.body.email, phoneNumber: req.body.phoneNumber, password: req.body.password, }); const accessToken = jwt.sign( { id: user.id, username: user.username, }, process.env.JWT_ENCRYPT_KEY, { expiresIn: "3m", } ); User.register(user, req.body.password, (err, user) => { if (err) { console.log(err); res.send(err); } else { passport.authenticate("local")(req, res, () => { res.json({ accessToken: accessToken, username: user.username, }); console.log("user registered"); }); } }); } catch (err) { next(err); } }; exports.loginUser = async (req, res) => { try { const user = new User({ username: req.body.username, }); const accessToken = jwt.sign( { id: user.id, username: user.username, }, process.env.JWT_ENCRYPT_KEY, { expiresIn: "3m", } ); const refreshToken = jwt.sign( { id: user.id, username: user.username, }, process.env.JWT_ENCRYPT_KEY, { expiresIn: "20m", } ); req.login(user, (err) => { if (err) { console.log(err); res.send(err); } else { passport.authenticate("local")(req, res, () => { res.json({ accessToken: accessToken, refreshToken: refreshToken, username: user.username, }); console.log("user logged in"); }); } }); } catch (err) { console.log(err); } }; exports.deleteUser = async (req, res) => { try { if ((await User.findById(req.params.id)) === null) { res.send("User Not Found"); } else { await User.findByIdAndRemove(req.params.id).exec(); res.send("Deleted User"); } } catch (err) { console.log(err); } }; exports.logUsers = async (req, res) => { console.log("Log user called"); User.find({}, (err, result) => { if (err) { res.send({ app: err }); } else { res.send(result); } }); }; '
@@ -102,7 +113,7 @@ def write_to_file(path, content):
   file.close()
 
 # ----------------------------------------- Create folders for all of the files ----------------------------
-config_directory = os.path.join(current_path, "configs")
+config_directory = os.path.join(current_path, "config")
 controller_directory = os.path.join(current_path, "controllers")
 middleware_directory = os.path.join(current_path, "middleware")
 model_directory = os.path.join(current_path, "models")
@@ -110,20 +121,20 @@ route_directory = os.path.join(current_path, "routes")
 
 print("Creating needed folders...")
 
-# if os.path.exists(config_directory):
-#   print("Config path already exists.")
-# else:
-#   os.mkdir(config_directory)
+if os.path.exists(config_directory):
+  print("Config path already exists.")
+else:
+  os.mkdir(config_directory)
 
 if os.path.exists(controller_directory):
   print("Controller path already exists.")
 else:
   os.mkdir(controller_directory)
 
-# if os.path.exists(middleware_directory):
-#   print("Middleware path already exists.")
-# else:
-#   os.mkdir(middleware_directory)
+if os.path.exists(middleware_directory):
+  print("Middleware path already exists.")
+else:
+  os.mkdir(middleware_directory)
 
 if os.path.exists(model_directory):
   print("Model path already exists.")
@@ -134,6 +145,7 @@ if os.path.exists(route_directory):
   print("Route path already exists.")
 else:
   os.mkdir(route_directory)
+
 
 # ----------------------------------------- Call everything ----------------------------
 type_of_db = input("What are you storing in the DB?")
