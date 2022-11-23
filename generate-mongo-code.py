@@ -4,7 +4,7 @@ import os.path
 from os import path
 
 # ----------------------------------------- Set according to directory - var ----------------------------
-current_path = (r"Z:\programming\generate-mongo-db")
+current_path = (r"Z:\programming\fire\server")
 
 # ------------------------------------------- Global Variables ---------------------------------------------
 users_choice = "yes"
@@ -25,7 +25,7 @@ def create_config_files():
 def create_controller_files(name, *args):
     controller_first = 'const '+name+' = require("../models/'+name+'"); exports.create'+name+' = async (req, res) => { try { let new'+name+' = new '+name+'({'
     controller_second = []
-    controller_third = ' }); await new'+name+'.save(); res.send(new'+name+'); } catch (err) { console.log(err); } }; exports.read'+name+' = async (req, res) => { try { '+name+'.find({}, (err, result) => { if (err) { res.json({ app: err }); } res.send(result); }); } catch (err) { console.log(err); } }; exports.read'+name+'FromID = async (req, res) => { try { await '+name+'.findById({ _id: req.params.id }, {}, (err, result) => { if (err) { res.json({ app: err }); } res.send(result); }); } catch (err) { console.log(err); } }; exports.update'+name+' = async (req, res) => { try { await '+name+'.findByIdAndUpdate( req.params.id, {'
+    controller_third = ' }); await new'+name+'.save(); res.send(new'+name+'); } catch (err) { console.log(err); } }; exports.read'+name+' = async (req, res) => { try { '+name+'.find({}, (err, result) => { if (err) { res.json({ app: err }); } res.send(result); }).sort({ createdAt: -1 }); } catch (err) { console.log(err); } }; exports.read'+name+'FromID = async (req, res) => { try { await '+name+'.findById({ _id: req.params.id }, {}, (err, result) => { if (err) { res.json({ app: err }); } res.send(result); }); } catch (err) { console.log(err); } }; exports.update'+name+' = async (req, res) => { try { await '+name+'.findByIdAndUpdate( req.params.id, {'
     controller_fourth = []
     controller_fifth = ' }, (err, result) => { if (err) { res.json({ app: err }); } res.send(result); } ); } catch (err) { console.log(err); } }; exports.delete'+name+' = async (req, res) => { try { if ((await '+name+'.findById(req.params.id)) === null) { res.json({ app: "post not found" }); } else { await '+name+'.findByIdAndRemove(req.params.id).exec(); res.json({ app: "post deleted" }); } } catch (err) { console.log(err); res.send(err); } };'
     controller_file_path = controller_directory + f'/{name}.js'
@@ -48,7 +48,7 @@ def create_models_files(name, *args):
     models_file_path = model_directory + f'/{name}.js'
     for arg in args:
         for a in arg:
-            middle = ''+ a + ': { type: String, require: [true, "Please provide '+ a + '"], default: "", },'
+            middle = ''+ a + ': { type: String, required: [true, "Please provide '+ a + '"],  },'
             models_file_middle.append(middle)
     try:
         middle_file = ''.join(models_file_middle)
@@ -85,7 +85,7 @@ def create_index_file(name):
 
 def create_auth_files():
     auth_controller_file = 'const User = require("../models/auth"); const jwt = require("jsonwebtoken"); const passport = require("passport"); exports.registerUser = async (req, res, next) => { try { const user = new User({ username: req.body.username, email: req.body.email, phoneNumber: req.body.phoneNumber, password: req.body.password, }); const accessToken = jwt.sign( { id: user.id, username: user.username, }, process.env.JWT_ENCRYPT_KEY, { expiresIn: "3m", } ); User.register(user, req.body.password, (err, user) => { if (err) { console.log(err); res.send(err); } else { passport.authenticate("local")(req, res, () => { res.json({ accessToken: accessToken, username: user.username, }); console.log("user registered"); }); } }); } catch (err) { next(err); } }; exports.loginUser = async (req, res) => { try { const user = new User({ username: req.body.username, }); const accessToken = jwt.sign( { id: user.id, username: user.username, }, process.env.JWT_ENCRYPT_KEY, { expiresIn: "3m", } ); const refreshToken = jwt.sign( { id: user.id, username: user.username, }, process.env.JWT_ENCRYPT_KEY, { expiresIn: "20m", } ); req.login(user, (err) => { if (err) { console.log(err); res.send(err); } else { passport.authenticate("local")(req, res, () => { res.json({ accessToken: accessToken, refreshToken: refreshToken, username: user.username, }); console.log("user logged in"); }); } }); } catch (err) { console.log(err); } }; exports.deleteUser = async (req, res) => { try { if ((await User.findById(req.params.id)) === null) { res.send("User Not Found"); } else { await User.findByIdAndRemove(req.params.id).exec(); res.send("Deleted User"); } } catch (err) { console.log(err); } }; exports.logUsers = async (req, res) => { console.log("Log user called"); User.find({}, (err, result) => { if (err) { res.send({ app: err }); } else { res.send(result); } }); }; '
-    auth_model_file = 'const mongoose = require("mongoose"); const passportLocalMongoose = require("passport-local-mongoose"); const findOrCreate = require("mongoose-findorcreate"); const UserSchema = new mongoose.Schema( { username: { type: String, required: [true, "Please provide a username"], unique: [true, "Username already taken"], }, email: { type: String, required: [true, "Please provide an email address"], unique: [true, "Email address already taken"], }, phoneNumber: { type: String, default: "", }, profilePic: { type: String, default: "", }, }, { timestamps: true } ); UserSchema.plugin(passportLocalMongoose); UserSchema.plugin(findOrCreate); module.exports = mongoose.model("User", UserSchema); '
+    auth_model_file = 'const mongoose = require("mongoose"); const passportLocalMongoose = require("passport-local-mongoose"); const findOrCreate = require("mongoose-findorcreate"); const UserSchema = new mongoose.Schema( { username: { type: String, required: [true, "Please provide a username"], unique: [true, "Username already taken"], }, email: { type: String, required: [true, "Please provide an email address"], unique: [true, "Email address already taken"], }, phoneNumber: { type: String,  }, profilePic: { type: String,  }, }, { timestamps: true } ); UserSchema.plugin(passportLocalMongoose); UserSchema.plugin(findOrCreate); module.exports = mongoose.model("User", UserSchema); '
     auth_route_file = 'const express = require("express"); const router = express.Router(); const { registerUser, loginUser, logUsers, deleteUser, } = require("../controllers/auth"); router.route("/register").post(registerUser); router.route("/login").post(loginUser); router.route("/allUsers").get(logUsers); router.route("/delete/:id").delete(deleteUser); module.exports = router;'
     auth_controller_file_path = controller_directory + '/auth.js'
     auth_model_file_path = model_directory + '/auth.js'
